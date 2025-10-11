@@ -1,9 +1,9 @@
 # Visualmath
-Visualmath is an interactive Python-based whiteboard application built with Tkinter, designed for exploring mathematical concepts through visual, node-based computations. Users create colorful point units (yellow for inputs like variables, red for bases/scalars, blue for outputs/operations) to perform real-time addition, multiplication, logarithmic functions, and Riemann sums. Drag nodes to rearrange, link outputs for propagation, edit values via double-click or scroll, and use timers/deltas for dynamic updates—perfect for educators, students, or anyone visualizing math ideas on a dark-themed canvas.
+Visualmath is an interactive Python-based whiteboard application built with Tkinter, designed for exploring mathematical concepts through visual, node-based computations. Users create colorful point units (yellow for inputs like variables, red for bases/scalars, blue for outputs/operations) to perform real-time addition, multiplication, logarithmic functions, and their inverses. Drag nodes to rearrange, link outputs for propagation, edit values via double-click or scroll, and use timers/deltas for dynamic updates—perfect for educators, students, or anyone visualizing math ideas on a dark-themed canvas.
 ## Features
 
 Interactive Node Creation: Ctrl+Double-Click to spawn tri-color units (yellow/red inputs → blue output) with instant arrows and value labels.
-Dynamic Operations: Right-click blue nodes to enable addition (+), multiplication (*), logarithmic (Log/Root/Base) and their inverses or Riemann sums (∑ with history tracking and accumulation).
+Dynamic Operations: Right-click blue nodes to enable addition (+), multiplication (*), logarithmic (Log/Root/Base) and their inverses, or Integration via Riemann sums (∑ with history tracking and accumulation).
 Value Editing & Linking: Double-click labels to edit, scroll for increments
 Timers & Deltas: Right-click red/yellow nodes for "t" (1/sec auto-increment) or "delta" (custom step input) modes.
 Manipulation Tools: Drag singles/groups (Shift+Click select), double-click arrows to reverse links (solve for "x"), Undo last unit, full Reset.
