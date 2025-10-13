@@ -46,7 +46,7 @@ Ctrl+Alt+Click two blue outputs → Dashed white arrow links them; changes propa
 
 
 
-For advanced usage (e.g., timers on red/yellow: Right-click → "t" for auto +1/sec), see the in-app tooltips or demo video. Explore the code in whiteboard1.py—contributions welcome!
+For advanced usage (e.g., timers on red/yellow: Right-click → "t" for auto +1/sec), see the in-app tooltips or demo video https://www.youtube.com/watch?v=z8bdmnErXxM. Explore the code in whiteboard1.py—contributions welcome!
 Contributing
 
 ## Contributing
