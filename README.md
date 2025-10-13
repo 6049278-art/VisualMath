@@ -59,13 +59,7 @@ This project is licensed under the [Apache License 2.0](LICENSE).
 
 ## Authors
 
--Daniel Rodriguez
 
-## Acknowledgements
-
-- List libraries, tools, or people who inspired/helped the project
-
----
 
 > Star ⭐ the repo if you find it useful.  
 > Open an issue or pull request for suggestions, improvements, or fixes!
