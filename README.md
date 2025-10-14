@@ -1,3 +1,5 @@
+Capture5.PNG
+
 # Visualmath
 Visualmath is an interactive Python-based whiteboard application built with Tkinter, designed for exploring mathematical concepts through visual, node-based computations. Users create colorful point units (yellow for inputs like variables, red for bases/scalars, blue for outputs/operations) to perform real-time addition, multiplication, logarithmic functions, and their inverses. Drag nodes to rearrange, link outputs for propagation, edit values via double-click or scroll, and use timers/deltas for dynamic updates—perfect for educators, students, or anyone visualizing math ideas
 ## Features
