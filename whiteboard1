@@ -1,16 +1,23 @@
 import tkinter as tk
 import math
+from tkinter import messagebox  # NEW: For premium dialogs
 from collections import defaultdict
 
 class WhiteboardApp:
+    # NEW: Premium dialog method
+    def show_premium_dialog(self, feature="this feature"):
+        from tkinter import messagebox
+        messagebox.showinfo("Premium Feature", f"{feature} requires a premium license. Please upgrade to access this feature.")
     def __init__(self, root):
+        # NEW: Premium flag (False for public; set True for premium)
+        self.is_premium = False  # TODO: In premium, set to True or check os.environ.get('PREMIUM_KEY') == 'valid_key'
         self.root = root
         self.root.title("Whiteboard Application")
         
         # Set initial window size
         self.root.geometry("800x600")
         
-        # Create a frame for buttons
+         # Create a frame for buttons
         self.button_frame = tk.Frame(root)
         self.button_frame.pack(pady=5)
         
@@ -28,7 +35,7 @@ class WhiteboardApp:
         self.canvas = tk.Canvas(root, bg="gray50")
         self.canvas.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
         
-        # State variables
+        # State variables (GUARDED: Skip premium vars if not premium)
         self.points = {}          # {point_id: (x, y, color)}
         self.arrows = {}          # {arrow_id: (source_point_id, target_point_id)}
         self.units = []           # List of unit dicts: {'unit_id': id, 'output': target_id, 'input1': source1_id, 'input2': source2_id, 'blue': id, 'yellow': id, 'red': id, 'arrows': [arrow_id1, arrow_id2], 'operation': None/"addition"/"multiplication"/"logarithmic", 'operation_label': text_id or 'operation_labels': {'yellow': id, 'blue': id, 'red': id}}
@@ -42,42 +49,66 @@ class WhiteboardApp:
         self.selected_outputs = []    # List of selected output points for linking
         self.cell_links = []          # List of {'start': p_id, 'end': p_id, 'arrow_id': id}
         self.cell_graph = defaultdict(list)  # For cycle detection: start -> [ends]
-        self.dragging_point = None
-        self.dragging_mode = None    # 'single' or 'group'
+        self.dragging_item = None
+        self.dragging_type = None    # 'point', 'text', or 'group'
         self.dragging_units = None
+        self.dragging_text_id = None
         self.initial_positions = None
         self.init_mouse_x = None
         self.init_mouse_y = None
-        self.fixed_timers = {}       # {point_id: after_id} for fixed +1 timers
-        self.point_steps = {}        # {point_id: step_size}
+        self.init_drag_x = None
+        self.init_drag_y = None
+        # PREMIUM: Only init if premium
+        if self.is_premium:
+            self.fixed_timers = {}       # {point_id: after_id} for fixed +1 timers
+            self.point_steps = {}        # {point_id: step_size}
         self.next_unit_id = 1     # For assigning unique unit IDs
         self.editing_entry = None # Track active Entry widget
         self.red_context_point = None
         self.yellow_context_point = None
-        self.next_report_y = 30
-        self.report_positions = {}
+        # PREMIUM: Only init if premium
+        if self.is_premium:
+            self.next_report_y = 30
+            self.report_positions = {}
+        self.texts = {}             # {text_id: (x, y, content)}
+        self.text_handles = {}      # {text_id: handle_id}
+        self.editing_text = None    # text_id being edited or None for new
+        self.editing_text_widget = None
+        self.new_text_pos = None
+        self.context_text_id = None
         
         # Context menu for blue point operations
         self.context_menu = tk.Menu(self.canvas, tearoff=0)
         self.context_menu.add_command(label="Addition", command=self.enable_addition)
         self.context_menu.add_command(label="Multiplication", command=self.enable_multiplication)
         self.context_menu.add_command(label="Logarithmic", command=self.enable_logarithmic)
-        self.context_menu.add_command(label="Riemann Sum", command=self.enable_riemann_sum)
+        # PREMIUM: Conditionally add Riemann
+        if self.is_premium:
+            self.context_menu.add_command(label="Riemann Sum", command=self.enable_riemann_sum)
+        else:
+            self.context_menu.add_command(label="Riemann Sum (Premium)", command=self.show_premium_dialog, state="disabled")
         
-        # Context menu for red point timer
-        self.red_context_menu = tk.Menu(self.canvas, tearoff=0)
-        self.red_context_menu.add_command(label="t", command=self.toggle_red_timer, font=('Arial', 12, 'bold'))
-        self.red_context_menu.add_command(label="delta", command=self.apply_red_delta, font=('Arial', 10, 'bold'))
+        # PREMIUM: Context menus only if premium
+        if self.is_premium:
+            # Context menu for red point timer
+            self.red_context_menu = tk.Menu(self.canvas, tearoff=0)
+            self.red_context_menu.add_command(label="t", command=self.toggle_red_timer, font=('Arial', 12, 'bold'))
+            self.red_context_menu.add_command(label="delta", command=self.apply_red_delta, font=('Arial', 10, 'bold'))
+            
+            # Context menu for yellow point timer
+            self.yellow_context_menu = tk.Menu(self.canvas, tearoff=0)
+            self.yellow_context_menu.add_command(label="t", command=self.toggle_yellow_timer, font=('Arial', 12, 'bold'))
+            self.yellow_context_menu.add_command(label="delta", command=self.apply_yellow_delta, font=('Arial', 10, 'bold'))
         
-        # Context menu for yellow point timer
-        self.yellow_context_menu = tk.Menu(self.canvas, tearoff=0)
-        self.yellow_context_menu.add_command(label="t", command=self.toggle_yellow_timer, font=('Arial', 12, 'bold'))
-        self.yellow_context_menu.add_command(label="delta", command=self.apply_yellow_delta, font=('Arial', 10, 'bold'))
+        # Context menu for text
+        self.text_context_menu = tk.Menu(self.canvas, tearoff=0)
+        self.text_context_menu.add_command(label="Edit", command=self.edit_text)
+        self.text_context_menu.add_command(label="Delete", command=self.delete_text)
         
         # Bindings
         self.canvas.bind("<Control-Double-Button-1>", self.handle_control_double_click)
         self.canvas.bind("<Button-1>", self.start_drag)
-        self.canvas.bind("<B1-Motion>", self.drag_point)
+        self.canvas.bind("<B1-Motion>", self.drag_item)
         self.canvas.bind("<ButtonRelease-1>", self.stop_drag)
         self.canvas.bind("<Double-Button-1>", self.handle_double_click)
         self.canvas.bind("<Button-3>", self.show_context_menu)
@@ -90,6 +121,8 @@ class WhiteboardApp:
         self.canvas.bind("<MouseWheel>", self.handle_scroll)  # Windows
         self.canvas.bind("<Button-4>", self.handle_scroll)   # Linux (scroll up)
         self.canvas.bind("<Button-5>", self.handle_scroll)   # Linux (scroll down)
+        # Text double-click binding
+        self.canvas.tag_bind("text", "<Double-Button-1>", self.on_text_double_click)
     
     def format_number(self, value):
         """Format a number to up to 4 decimal places with thousands separators, removing trailing zeros and decimal point if unnecessary."""
@@ -119,10 +152,13 @@ class WhiteboardApp:
             self.selected_points.clear()
     
     def toggle_select(self, event):
-        clicked_item = self.canvas.find_closest(event.x, event.y)
+        items = self.canvas.find_closest(event.x, event.y)
+        if not items:
+            return "break"
+        clicked_item = items[0]
         if "point" not in self.canvas.gettags(clicked_item):
             return "break"
-        point_id = clicked_item[0]
+        point_id = clicked_item
         
         if point_id in self.point_to_group:
             # Unlink the point
@@ -162,10 +198,13 @@ class WhiteboardApp:
         return "break"
     
     def toggle_output_select(self, event):
-        clicked_item = self.canvas.find_closest(event.x, event.y)
+        items = self.canvas.find_closest(event.x, event.y)
+        if not items:
+            return "break"
+        clicked_item = items[0]
         if "point" not in self.canvas.gettags(clicked_item):
             return "break"
-        point_id = clicked_item[0]
+        point_id = clicked_item
         unit_id = self.point_units.get(point_id)
         if not unit_id:
             return "break"
@@ -192,10 +231,13 @@ class WhiteboardApp:
         return "break"
     
     def toggle_unit_select(self, event):
-        clicked_item = self.canvas.find_closest(event.x, event.y)
+        items = self.canvas.find_closest(event.x, event.y)
+        if not items:
+            return "break"
+        clicked_item = items[0]
         if "point" not in self.canvas.gettags(clicked_item):
             return "break"
-        point_id = clicked_item[0]
+        point_id = clicked_item
         unit_id = self.point_units.get(point_id)
         if not unit_id:
             return "break"
@@ -224,32 +266,49 @@ class WhiteboardApp:
             return {point_id}
     
     def show_context_menu(self, event):
-        # Find the clicked point
-        clicked_item = self.canvas.find_closest(event.x, event.y)
-        if "point" not in self.canvas.gettags(clicked_item):
+        # Find the clicked item
+        items = self.canvas.find_closest(event.x, event.y)
+        if not items:
             return
-        clicked_point = clicked_item[0]
-        
-        color = self.points[clicked_point][2]
-        if color == 'red':
-            self.show_red_menu(event, clicked_point)
-            return
-        elif color == 'yellow':
-            self.show_yellow_menu(event, clicked_point)
-            return
-        
-        # Check if the point is the blue point of its unit
-        unit_id = self.point_units.get(clicked_point)
-        if not unit_id:
-            return
-        unit = next((u for u in self.units if u['unit_id'] == unit_id), None)
-        if not unit or clicked_point != unit['blue']:
-            return
-        
-        # Store the unit ID for the context menu action
-        self.context_menu_unit_id = unit_id
-        # Show the context menu
-        self.context_menu.post(event.x_root, event.y_root)
+        clicked_item = items[0]
+        tags = self.canvas.gettags(clicked_item)
+        if "point" in tags:
+            color = self.points[clicked_item][2]
+            # PREMIUM: Guard red/yellow menus
+            if color == 'red':
+                if self.is_premium:
+                    self.show_red_menu(event, clicked_item)
+                else:
+                    self.show_premium_dialog("Time Timer (Red)")
+                return
+            elif color == 'yellow':
+                if self.is_premium:
+                    self.show_yellow_menu(event, clicked_item)
+                else:
+                    self.show_premium_dialog("Time Timer (Yellow)")
+                return
+            
+            # Check if the point is the blue point of its unit
+            unit_id = self.point_units.get(clicked_item)
+            if not unit_id:
+                return
+            unit = next((u for u in self.units if u['unit_id'] == unit_id), None)
+            if not unit or clicked_item != unit['blue']:
+                return
+            
+            # Store the unit ID for the context menu action
+            self.context_menu_unit_id = unit_id
+            # Show the context menu
+            self.context_menu.post(event.x_root, event.y_root)
+        elif "text" in tags or ("text_handle" in tags and len(tags) > 1):
+            if "text" in tags:
+                text_id = clicked_item
+            else:
+                # Parse text_id from handle tags
+                text_id_str = [t for t in tags if t.isdigit()][0]
+                text_id = int(text_id_str)
+            self.context_text_id = text_id
+            self.text_context_menu.post(event.x_root, event.y_root)
     
     def show_red_menu(self, event, point_id):
         self.red_context_point = point_id
@@ -259,7 +318,130 @@ class WhiteboardApp:
         self.yellow_context_point = point_id
         self.yellow_context_menu.post(event.x_root, event.y_root)
     
+    def edit_text(self):
+        text_id = self.context_text_id
+        if text_id not in self.texts:
+            return
+        x, y, _ = self.texts[text_id]
+        self.edit_text_at(text_id, x, y)
+    
+    def delete_text(self):
+        text_id = self.context_text_id
+        if text_id in self.texts:
+            handle_id = self.text_handles.get(text_id)
+            if handle_id:
+                self.canvas.delete(handle_id)
+                del self.text_handles[text_id]
+            self.canvas.delete(text_id)
+            del self.texts[text_id]
+    
+    def on_text_double_click(self, event):
+        item = self.canvas.find_closest(event.x, event.y)
+        if len(item) == 0 or "text" not in self.canvas.gettags(item[0]):
+            return
+        text_id = item[0]
+        x, y, _ = self.texts[text_id]
+        self.edit_text_at(text_id, x, y)
+    
+    def edit_text_at(self, text_id, x, y):
+        content = self.texts.get(text_id, ("", "", ""))[2]
+        if self.editing_text_widget:
+            self.finish_edit_text()
+        self.editing_text = text_id
+        widget = tk.Text(self.canvas, wrap=tk.WORD, width=20, height=5, bg="white", relief="solid", bd=1)
+        widget.place(x=x, y=y, anchor="nw")
+        widget.insert("1.0", content)
+        widget.focus_set()
+        widget.bind("<Return>", self.on_text_enter)
+        widget.bind("<Shift-Return>", self.on_shift_return)
+        widget.bind("<Escape>", self.cancel_edit_text)
+        self.editing_text_widget = widget
+        self.canvas.itemconfig(text_id, state="hidden")
+        handle_id = self.text_handles.get(text_id)
+        if handle_id:
+            self.canvas.itemconfig(handle_id, state="hidden")
+    
+    def on_shift_return(self, event):
+        self.editing_text_widget.insert(tk.INSERT, "\n")
+        return "break"
+    
+    def on_text_enter(self, event):
+        self.finish_edit_text()
+        return "break"
+    
+    def start_new_text(self, x, y):
+        if self.editing_text_widget:
+            self.finish_edit_text()
+        self.editing_text = None
+        self.new_text_pos = (x, y)
+        widget = tk.Text(self.canvas, wrap=tk.WORD, width=20, height=5, bg="white", relief="solid", bd=1)
+        widget.place(x=x, y=y, anchor="nw")
+        widget.focus_set()
+        widget.bind("<Return>", self.on_text_enter)
+        widget.bind("<Shift-Return>", self.on_shift_return)
+        widget.bind("<Escape>", self.cancel_edit_text)
+        self.editing_text_widget = widget
+    
+    def finish_edit_text(self):
+        if not self.editing_text_widget:
+            return
+        content = self.editing_text_widget.get("1.0", tk.END).rstrip()
+        stripped_content = content.strip()
+        if not stripped_content:
+            # Empty, cancel
+            self.editing_text_widget.destroy()
+            self.editing_text_widget = None
+            self.editing_text = None
+            if hasattr(self, 'new_text_pos'):
+                del self.new_text_pos
+            return
+        if self.editing_text is None:
+            # New text
+            x, y = self.new_text_pos
+            del self.new_text_pos
+            text_id = self.canvas.create_text(x, y, text=content, anchor="nw", fill="black", tags="text")
+            # Create handle
+            handle_id = self.canvas.create_oval(x-3, y-3, x+3, y+3, fill="black", outline="black", tags=("text_handle", str(text_id)))
+            self.texts[text_id] = (x, y, content)
+            self.text_handles[text_id] = handle_id
+        else:
+            # Edit existing
+            text_id = self.editing_text
+            x, y, old_content = self.texts[text_id]
+            handle_id = self.text_handles.get(text_id)
+            self.canvas.delete(text_id)
+            if handle_id:
+                self.canvas.delete(handle_id)
+            new_text_id = self.canvas.create_text(x, y, text=content, anchor="nw", fill="black", tags="text")
+            new_handle_id = self.canvas.create_oval(x-3, y-3, x+3, y+3, fill="black", outline="black", tags=("text_handle", str(new_text_id)))
+            self.texts[new_text_id] = (x, y, content)
+            self.text_handles[new_text_id] = new_handle_id
+            del self.texts[text_id]
+            del self.text_handles[text_id]
+            # Update context if applicable
+            if hasattr(self, 'context_text_id') and self.context_text_id == text_id:
+                self.context_text_id = new_text_id
+        self.editing_text_widget.destroy()
+        self.editing_text_widget = None
+        self.editing_text = None
+    
+    def cancel_edit_text(self, event=None):
+        if self.editing_text_widget:
+            self.editing_text_widget.destroy()
+            self.editing_text_widget = None
+            if self.editing_text is not None:
+                self.canvas.itemconfig(self.editing_text, state="normal")
+                handle_id = self.text_handles.get(self.editing_text)
+                if handle_id:
+                    self.canvas.itemconfig(handle_id, state="normal")
+            self.editing_text = None
+            if hasattr(self, 'new_text_pos'):
+                del self.new_text_pos
+    
     def toggle_red_timer(self):
+        if not self.is_premium:
+            self.show_premium_dialog("Time Timer (t)")
+            return
         point_id = self.red_context_point
         if point_id in self.fixed_timers:
             self.root.after_cancel(self.fixed_timers[point_id])
@@ -268,6 +450,9 @@ class WhiteboardApp:
             self.increment_fixed(point_id)
     
     def toggle_yellow_timer(self):
+        if not self.is_premium:
+            self.show_premium_dialog("Time Timer (t)")
+            return
         point_id = self.yellow_context_point
         if point_id in self.fixed_timers:
             self.root.after_cancel(self.fixed_timers[point_id])
@@ -276,6 +461,9 @@ class WhiteboardApp:
             self.increment_fixed(point_id)
     
     def increment_fixed(self, point_id):
+        if not self.is_premium:
+            self.show_premium_dialog("Time/Riemann Feature")
+            return
         group = self.get_group_for_point(point_id)
         if point_id in self.point_numbers:
             old_value = self.point_numbers[point_id]
@@ -301,6 +489,9 @@ class WhiteboardApp:
         self.fixed_timers[point_id] = self.root.after(1000, lambda pid=point_id: self.increment_fixed(pid))
     
     def apply_red_delta(self):
+        if not self.is_premium:
+            self.show_premium_dialog("Time/Riemann Feature")
+            return
         if not self.red_context_point:
             return
         point_id = self.red_context_point
@@ -346,6 +537,9 @@ class WhiteboardApp:
         entry.bind("<Escape>", lambda e: cancel())
     
     def apply_yellow_delta(self):
+        if not self.is_premium:
+            self.show_premium_dialog("Time/Riemann Feature")
+            return
         if not self.yellow_context_point:
             return
         point_id = self.yellow_context_point
@@ -533,6 +727,9 @@ class WhiteboardApp:
                 self.update_unit_numbers(unit_id)
     
     def enable_riemann_sum(self):
+        if not self.is_premium:
+            self.show_premium_dialog("Riemann Sum Operation")
+            return
         if hasattr(self, 'context_menu_unit_id'):
             unit_id = self.context_menu_unit_id
             unit = next((u for u in self.units if u['unit_id'] == unit_id), None)
@@ -555,6 +752,9 @@ class WhiteboardApp:
                 self.update_riemann_report(unit)
     
     def _handle_riemann_accumulation(self, unit, new_yellow, old_yellow):
+        if not self.is_premium:
+            self.show_premium_dialog("Time/Riemann Feature")
+            return
         if new_yellow == old_yellow:
             return
         if new_yellow < old_yellow:
@@ -569,6 +769,9 @@ class WhiteboardApp:
         self.update_riemann_report(unit)
     
     def update_riemann_report(self, unit):
+        if not self.is_premium:
+            self.show_premium_dialog("Time/Riemann Feature")
+            return
         # Delete previous report if exists
         if 'report_id' in unit:
             self.canvas.delete(unit['report_id'])
@@ -653,8 +856,12 @@ class WhiteboardApp:
                     except (ValueError, ZeroDivisionError, OverflowError):
                         output_value = 0.0  # Handle invalid root (zero index, negative base)
             elif unit['operation'] == 'riemann_sum':
-                current_red_value = self.point_numbers.get(unit['red'], 1.0)
-                output_value = round(unit['running_sum'] * current_red_value, 4)
+                if not self.is_premium:
+                    self.show_premium_dialog("Riemann Calculation")  # Show once per update? Or log
+                    output_value = 0.0  # Fallback
+                else:
+                    current_red_value = self.point_numbers.get(unit['red'], 1.0)
+                    output_value = round(unit['running_sum'] * current_red_value, 4)
         
         # Update output number
         self.point_numbers[output_id] = output_value
@@ -749,7 +956,8 @@ class WhiteboardApp:
             return
         
         old_yellow = None
-        if unit['operation'] == 'riemann_sum' and point_id == unit['yellow']:
+        # FIXED: Guard Riemann check for free version
+        if self.is_premium and unit['operation'] == 'riemann_sum' and point_id == unit['yellow']:
             old_yellow = self.point_numbers[point_id]
         
         # Determine direction and step
@@ -760,7 +968,12 @@ class WhiteboardApp:
         else:  # MouseWheel
             direction = event.delta / 120  # Typically +1 or -1
         
-        step = self.point_steps.get(point_id, 0.1)
+        # FIXED: Guard point_steps access for free version (default to 0.1 if not premium)
+        if self.is_premium:
+            point_steps = self.point_steps
+        else:
+            point_steps = {}
+        step = point_steps.get(point_id, 0.1)
         delta = direction * step
         
         # Determine group
@@ -783,44 +996,6 @@ class WhiteboardApp:
                 if old_yellow != new_yellow:
                     self._handle_riemann_accumulation(unit, new_yellow, old_yellow)
     
-    def start_edit_number(self, event, label_id):
-        # Find the point associated with the label
-        point_id = None
-        for pid, lid in self.point_number_labels.items():
-            if lid == label_id:
-                point_id = pid
-                break
-        if not point_id:
-            return
-        
-        # Check if the point is an output
-        unit_id = self.point_units.get(point_id)
-        if not unit_id:
-            return
-        unit = next((u for u in self.units if u['unit_id'] == unit_id), None)
-        if not unit or point_id == unit['output']:
-            return
-        
-        # Get current number and label position
-        current_number = self.point_numbers[point_id]
-        x, y, _ = self.points[point_id]
-        label_x, label_y = x + 15, y + 15
-        
-        # Create Entry widget
-        if self.editing_entry:
-            self.cancel_edit_number()
-        self.editing_entry = tk.Entry(self.canvas, width=10)
-        self.editing_entry.place(x=label_x, y=label_y, anchor="nw")
-        self.editing_entry.insert(0, self.format_number(current_number))
-        self.editing_entry.focus_set()
-        
-        # Bind Enter and Esc keys
-        self.editing_entry.bind("<Return>", lambda e: self.save_edit_number(point_id))
-        self.editing_entry.bind("<Escape>", lambda e: self.cancel_edit_number())
-        
-        # Store the point being edited
-        self.editing_point_id = point_id
-    
     def save_edit_number(self, point_id):
         if not self.editing_entry or point_id not in self.point_numbers:
             return
@@ -833,7 +1008,8 @@ class WhiteboardApp:
             unit = None
             if unit_id:
                 unit = next((u for u in self.units if u['unit_id'] == unit_id), None)
-                if unit and unit['operation'] == 'riemann_sum' and point_id == unit['yellow']:
+                # FIXED: Guard Riemann check
+                if self.is_premium and unit and unit['operation'] == 'riemann_sum' and point_id == unit['yellow']:
                     old_yellow = self.point_numbers[point_id]
             # Determine group
             group = self.get_group_for_point(point_id)
@@ -844,8 +1020,8 @@ class WhiteboardApp:
                     self.canvas.itemconfig(label_id, text=self.format_number(new_value))
                 # Propagate for every point
                 self.propagate_update(p, new_value)
-            # Handle riemann accumulation
-            if unit and unit['operation'] == 'riemann_sum' and point_id == unit['yellow']:
+            # Handle riemann accumulation (GUARDED)
+            if self.is_premium and unit and unit['operation'] == 'riemann_sum' and point_id == unit['yellow']:
                 self._handle_riemann_accumulation(unit, new_value, old_yellow)
         except ValueError:
             pass  # Ignore invalid input
@@ -867,21 +1043,24 @@ class WhiteboardApp:
         if unit_id in self.selected_units:
             self.selected_units.remove(unit_id)
         
-        # Handle riemann report deletion
-        if unit.get('operation') == 'riemann_sum':
+        # PREMIUM: Guard Riemann report deletion
+        if self.is_premium and unit.get('operation') == 'riemann_sum':
             if 'report_id' in unit:
                 self.canvas.delete(unit['report_id'])
-            if unit_id in self.report_positions:
+            if hasattr(self, 'report_positions') and unit_id in self.report_positions:
                 del self.report_positions[unit_id]
         
-        # Cancel timers for deleted points
+        # PREMIUM: Guard timer cleanup
+        if self.is_premium:
+            for point_id in [unit['blue'], unit['yellow'], unit['red']]:
+                if point_id in self.fixed_timers:
+                    self.root.after_cancel(self.fixed_timers[point_id])
+                    del self.fixed_timers[point_id]
+                if point_id in self.point_steps:
+                    del self.point_steps[point_id]
+        
+        # Remove cell links involving this point (always, even free)
         for point_id in [unit['blue'], unit['yellow'], unit['red']]:
-            if point_id in self.fixed_timers:
-                self.root.after_cancel(self.fixed_timers[point_id])
-                del self.fixed_timers[point_id]
-            if point_id in self.point_steps:
-                del self.point_steps[point_id]
-            # Remove cell links involving this point
             to_remove = [l for l in self.cell_links if l['start'] == point_id or l['end'] == point_id]
             for l in to_remove:
                 self.canvas.delete(l['arrow_id'])
@@ -931,10 +1110,11 @@ class WhiteboardApp:
                 del self.point_numbers[point_id]
     
     def reset_all(self):
-        # Cancel all timers
-        for after_id in list(self.fixed_timers.values()):
-            self.root.after_cancel(after_id)
-        self.fixed_timers.clear()
+        # Cancel all timers (GUARDED)
+        if self.is_premium and hasattr(self, 'fixed_timers'):
+            for after_id in list(self.fixed_timers.values()):
+                self.root.after_cancel(after_id)
+            self.fixed_timers.clear()
         
         # Delete all canvas items
         self.canvas.delete("all")
@@ -953,163 +1133,203 @@ class WhiteboardApp:
         self.selected_outputs.clear()
         self.cell_links.clear()
         self.cell_graph.clear()
-        self.point_steps.clear()
-        self.report_positions.clear()
-        self.next_report_y = 30
-        self.dragging_point = None
-        self.dragging_mode = None
+        # PREMIUM: Guarded clears
+        if self.is_premium:
+            if hasattr(self, 'point_steps'):
+                self.point_steps.clear()
+            if hasattr(self, 'report_positions'):
+                self.report_positions.clear()
+            self.next_report_y = 30
+        self.texts.clear()
+        self.text_handles.clear()
+        self.dragging_item = None
+        self.dragging_type = None
+        self.dragging_text_id = None
         self.dragging_units = None
         self.initial_positions = None
         self.init_mouse_x = None
         self.init_mouse_y = None
+        self.init_drag_x = None
+        self.init_drag_y = None
         self.next_unit_id = 1
         self.editing_entry = None
+        self.editing_text = None
+        self.editing_text_widget = None
+        self.new_text_pos = None
         self.red_context_point = None
         self.yellow_context_point = None
+        self.context_text_id = None
+        if self.editing_text_widget:
+            self.cancel_edit_text()
     
     def start_drag(self, event):
-        clicked_item = self.canvas.find_closest(event.x, event.y)
-        if "point" not in self.canvas.gettags(clicked_item):
+        items = self.canvas.find_closest(event.x, event.y)
+        if not items:
             return
-        self.dragging_point = clicked_item[0]
-        point_id = self.dragging_point
-        unit_id = self.point_units.get(point_id)
-        self.dragging_mode = None
-        if unit_id and unit_id in self.selected_units:
-            self.dragging_mode = 'group'
-            self.dragging_units = list(self.selected_units)
-            self.initial_positions = {}
-            for uid in self.dragging_units:
-                u = next((u for u in self.units if u['unit_id'] == uid), None)
-                if u:
-                    for col in ['blue', 'yellow', 'red']:
-                        p_id = u[col]
-                        self.initial_positions[p_id] = self.points[p_id][:2]
-            self.init_mouse_x = event.x
-            self.init_mouse_y = event.y
-        else:
-            self.dragging_mode = 'single'
+        clicked_item = items[0]
+        tags = self.canvas.gettags(clicked_item)
+        if "point" not in tags and "text_handle" not in tags:
+            return
+        self.dragging_item = clicked_item
+        if "point" in tags:
+            point_id = self.dragging_item
+            unit_id = self.point_units.get(point_id)
+            self.dragging_type = None
+            if unit_id and unit_id in self.selected_units:
+                self.dragging_type = 'group'
+                self.dragging_units = list(self.selected_units)
+                self.initial_positions = {}
+                for uid in self.dragging_units:
+                    u = next((u for u in self.units if u['unit_id'] == uid), None)
+                    if u:
+                        for col in ['blue', 'yellow', 'red']:
+                            p_id = u[col]
+                            self.initial_positions[p_id] = self.points[p_id][:2]
+                self.init_mouse_x = event.x
+                self.init_mouse_y = event.y
+            else:
+                self.dragging_type = 'point'
+        elif "text_handle" in tags:
+            # Parse text_id from tags
+            text_id_str = [t for t in tags if t.isdigit()][0]
+            self.dragging_text_id = int(text_id_str)
+            self.dragging_type = 'text'
     
-    def drag_point(self, event):
-        if self.dragging_mode is None:
+    def drag_item(self, event):
+        if self.dragging_item is None or self.dragging_type is None:
             return
-        if self.dragging_mode == 'single':
-            x, y = event.x, event.y
-            radius = 8
-            # Update point coordinates
-            self.canvas.coords(self.dragging_point, x - radius, y - radius, x + radius, y + radius)
-            self.points[self.dragging_point] = (x, y, self.points[self.dragging_point][2])
-            
-            # Update arrows connected to this point
-            for arrow_id, (source_id, target_id) in self.arrows.items():
-                source_x, source_y, _ = self.points[source_id]
-                target_x, target_y, _ = self.points[target_id]
-                if source_id == self.dragging_point or target_id == self.dragging_point:
-                    self.canvas.coords(arrow_id, source_x, source_y, target_x, target_y)
-            
-            # Update link arrows connected to this point
-            for link in self.cell_links:
-                if link['start'] == self.dragging_point or link['end'] == self.dragging_point:
-                    s_id = link['start']
-                    e_id = link['end']
-                    sx, sy = self.points[s_id][:2]
-                    ex, ey = self.points[e_id][:2]
-                    self.canvas.coords(link['arrow_id'], sx, sy, ex, ey)
-            
-            # Update number label position
-            if self.dragging_point in self.point_number_labels:
-                label_id = self.point_number_labels[self.dragging_point]
-                self.canvas.coords(label_id, x + 15, y + 15)
-            
-            # Update operation label(s) if applicable
-            unit_id = self.point_units.get(self.dragging_point)
-            if unit_id:
-                unit = next((u for u in self.units if u['unit_id'] == unit_id), None)
-                if unit:
-                    if unit.get('operation') == 'logarithmic' and 'operation_labels' in unit:
-                        # Determine which point is being dragged
-                        if self.dragging_point == unit['yellow']:
-                            color_key = 'yellow'
-                        elif self.dragging_point == unit['blue']:
-                            color_key = 'blue'
-                        elif self.dragging_point == unit['red']:
-                            color_key = 'red'
-                        else:
-                            color_key = None
-                        if color_key and color_key in unit['operation_labels']:
-                            op_label_id = unit['operation_labels'][color_key]
-                            self.canvas.coords(op_label_id, x, y - 20)
-                    elif unit.get('operation_label') and self.dragging_point == unit['blue']:
-                        # For addition/multiplication, move label if dragging blue point
-                        op_label_id = unit['operation_label']
-                        self.canvas.coords(op_label_id, x, y - 20)
-        elif self.dragging_mode == 'group':
-            dx = event.x - self.init_mouse_x
-            dy = event.y - self.init_mouse_y
-            # Update points
-            for p_id, (ix, iy) in self.initial_positions.items():
-                nx = ix + dx
-                ny = iy + dy
+        item_id = self.dragging_item
+        if self.dragging_type == 'point':
+            if self.dragging_type == 'group':  # Note: dragging_type set to 'group' overrides 'point'
+                dx = event.x - self.init_mouse_x
+                dy = event.y - self.init_mouse_y
+                # Update points
+                for p_id, (ix, iy) in self.initial_positions.items():
+                    nx = ix + dx
+                    ny = iy + dy
+                    radius = 8
+                    self.canvas.coords(p_id, nx - radius, ny - radius, nx + radius, ny + radius)
+                    self.points[p_id] = (nx, ny, self.points[p_id][2])
+                    # Update number labels
+                    if p_id in self.point_number_labels:
+                        l_id = self.point_number_labels[p_id]
+                        self.canvas.coords(l_id, nx + 15, ny + 15)
+                # Collect arrows for dragging units
+                all_arrows = set()
+                for uid in self.dragging_units:
+                    u = next((u for u in self.units if u['unit_id'] == uid), None)
+                    if u:
+                        all_arrows.update(u['arrows'])
+                # Update arrows
+                for a_id in all_arrows:
+                    if a_id in self.arrows:
+                        s_id, t_id = self.arrows[a_id]
+                        sx, sy = self.points[s_id][:2]
+                        tx, ty = self.points[t_id][:2]
+                        self.canvas.coords(a_id, sx, sy, tx, ty)
+                # Update link arrows if any connected points moved
+                moved_points = set(self.initial_positions.keys())
+                for link in self.cell_links:
+                    if link['start'] in moved_points or link['end'] in moved_points:
+                        sx, sy = self.points[link['start']][:2]
+                        ex, ey = self.points[link['end']][:2]
+                        self.canvas.coords(link['arrow_id'], sx, sy, ex, ey)
+                # Update operation labels
+                for uid in self.dragging_units:
+                    u = next((u for u in self.units if u['unit_id'] == uid), None)
+                    if not u:
+                        continue
+                    # Addition/Multiplication label
+                    if u.get('operation_label'):
+                        l_id = u['operation_label']
+                        b_id = u['blue']
+                        bx, by = self.points[b_id][:2]
+                        self.canvas.coords(l_id, bx, by - 20)
+                    # Logarithmic labels
+                    if u.get('operation') == 'logarithmic' and 'operation_labels' in u:
+                        op_labels = u['operation_labels']
+                        for color, l_id in op_labels.items():
+                            if color == 'yellow':
+                                p_id = u['yellow']
+                            elif color == 'blue':
+                                p_id = u['blue']
+                            elif color == 'red':
+                                p_id = u['red']
+                            else:
+                                continue
+                            px, py = self.points[p_id][:2]
+                            self.canvas.coords(l_id, px, py - 20)
+            else:
+                x, y = event.x, event.y
                 radius = 8
-                self.canvas.coords(p_id, nx - radius, ny - radius, nx + radius, ny + radius)
-                self.points[p_id] = (nx, ny, self.points[p_id][2])
-                # Update number labels
-                if p_id in self.point_number_labels:
-                    l_id = self.point_number_labels[p_id]
-                    self.canvas.coords(l_id, nx + 15, ny + 15)
-            # Collect arrows for dragging units
-            all_arrows = set()
-            for uid in self.dragging_units:
-                u = next((u for u in self.units if u['unit_id'] == uid), None)
-                if u:
-                    all_arrows.update(u['arrows'])
-            # Update arrows
-            for a_id in all_arrows:
-                if a_id in self.arrows:
-                    s_id, t_id = self.arrows[a_id]
-                    sx, sy = self.points[s_id][:2]
-                    tx, ty = self.points[t_id][:2]
-                    self.canvas.coords(a_id, sx, sy, tx, ty)
-            # Update link arrows if any connected points moved
-            moved_points = set(self.initial_positions.keys())
-            for link in self.cell_links:
-                if link['start'] in moved_points or link['end'] in moved_points:
-                    sx, sy = self.points[link['start']][:2]
-                    ex, ey = self.points[link['end']][:2]
-                    self.canvas.coords(link['arrow_id'], sx, sy, ex, ey)
-            # Update operation labels
-            for uid in self.dragging_units:
-                u = next((u for u in self.units if u['unit_id'] == uid), None)
-                if not u:
-                    continue
-                # Addition/Multiplication label
-                if u.get('operation_label'):
-                    l_id = u['operation_label']
-                    b_id = u['blue']
-                    bx, by = self.points[b_id][:2]
-                    self.canvas.coords(l_id, bx, by - 20)
-                # Logarithmic labels
-                if u.get('operation') == 'logarithmic' and 'operation_labels' in u:
-                    op_labels = u['operation_labels']
-                    for color, l_id in op_labels.items():
-                        if color == 'yellow':
-                            p_id = u['yellow']
-                        elif color == 'blue':
-                            p_id = u['blue']
-                        elif color == 'red':
-                            p_id = u['red']
-                        else:
-                            continue
-                        px, py = self.points[p_id][:2]
-                        self.canvas.coords(l_id, px, py - 20)
+                # Update point coordinates
+                self.canvas.coords(item_id, x - radius, y - radius, x + radius, y + radius)
+                self.points[item_id] = (x, y, self.points[item_id][2])
+                
+                # Update arrows connected to this point
+                for arrow_id, (source_id, target_id) in self.arrows.items():
+                    source_x, source_y, _ = self.points[source_id]
+                    target_x, target_y, _ = self.points[target_id]
+                    if source_id == item_id or target_id == item_id:
+                        self.canvas.coords(arrow_id, source_x, source_y, target_x, target_y)
+                
+                # Update link arrows connected to this point
+                for link in self.cell_links:
+                    if link['start'] == item_id or link['end'] == item_id:
+                        s_id = link['start']
+                        e_id = link['end']
+                        sx, sy = self.points[s_id][:2]
+                        ex, ey = self.points[e_id][:2]
+                        self.canvas.coords(link['arrow_id'], sx, sy, ex, ey)
+                
+                # Update number label position
+                if item_id in self.point_number_labels:
+                    label_id = self.point_number_labels[item_id]
+                    self.canvas.coords(label_id, x + 15, y + 15)
+                
+                # Update operation label(s) if applicable
+                unit_id = self.point_units.get(item_id)
+                if unit_id:
+                    unit = next((u for u in self.units if u['unit_id'] == unit_id), None)
+                    if unit:
+                        if unit.get('operation') == 'logarithmic' and 'operation_labels' in unit:
+                            # Determine which point is being dragged
+                            if item_id == unit['yellow']:
+                                color_key = 'yellow'
+                            elif item_id == unit['blue']:
+                                color_key = 'blue'
+                            elif item_id == unit['red']:
+                                color_key = 'red'
+                            else:
+                                color_key = None
+                            if color_key and color_key in unit['operation_labels']:
+                                op_label_id = unit['operation_labels'][color_key]
+                                self.canvas.coords(op_label_id, x, y - 20)
+                        elif unit.get('operation_label') and item_id == unit['blue']:
+                            # For addition/multiplication, move label if dragging blue point
+                            op_label_id = unit['operation_label']
+                            self.canvas.coords(op_label_id, x, y - 20)
+        elif self.dragging_type == 'text':
+            text_id = self.dragging_text_id
+            x, y = event.x, event.y
+            self.canvas.coords(text_id, x, y)
+            handle_id = self.text_handles.get(text_id)
+            if handle_id:
+                self.canvas.coords(handle_id, x-3, y-3, x+3, y+3)
+            if text_id in self.texts:
+                ox, oy, c = self.texts[text_id]
+                self.texts[text_id] = (x, y, c)
     
     def stop_drag(self, event):
-        self.dragging_mode = None
-        self.dragging_point = None
+        self.dragging_item = None
+        self.dragging_type = None
+        self.dragging_text_id = None
         self.dragging_units = None
         self.initial_positions = None
         self.init_mouse_x = None
         self.init_mouse_y = None
+        self.init_drag_x = None
+        self.init_drag_y = None
     
     def handle_double_click(self, event):
         # Check for link arrow double-click
@@ -1134,54 +1354,63 @@ class WhiteboardApp:
                 self.propagate_update(link['start'], self.point_numbers[link['start']])
             return "break"
         
+        # Check for text
+        items = self.canvas.find_closest(event.x, event.y)
+        if items and "text" in self.canvas.gettags(items[0]):
+            self.on_text_double_click(event)
+            return "break"
+        
         # Original point handling
-        clicked_item = self.canvas.find_closest(event.x, event.y)
-        if "point" not in self.canvas.gettags(clicked_item):
-            return
-        clicked_point = clicked_item[0]
-        
-        # Find the unit containing the clicked point
-        unit_id = self.point_units.get(clicked_point)
-        if not unit_id:
-            return
-        unit = next((u for u in self.units if u['unit_id'] == unit_id), None)
-        if not unit:
-            return
+        if items and "point" in self.canvas.gettags(items[0]):
+            clicked_point = items[0]
             
-        # If the clicked point is already the output, no change needed
-        if clicked_point == unit['output']:
-            return
+            # Find the unit containing the clicked point
+            unit_id = self.point_units.get(clicked_point)
+            if not unit_id:
+                return "break"
+            unit = next((u for u in self.units if u['unit_id'] == unit_id), None)
+            if not unit:
+                return "break"
+                
+            # If the clicked point is already the output, no change needed
+            if clicked_point == unit['output']:
+                return "break"
+                
+            # New output point
+            new_output_id = clicked_point
+            new_output_x, new_output_y, _ = self.points[new_output_id]
             
-        # New output point
-        new_output_id = clicked_point
-        new_output_x, new_output_y, _ = self.points[new_output_id]
-        
-        # Determine new input points (the other two points)
-        all_points = {unit['blue'], unit['yellow'], unit['red']}
-        all_points.remove(new_output_id)
-        new_input1_id, new_input2_id = list(all_points)  # Unpack the remaining two points
-        
-        # Update arrows: input1 -> output, input2 -> output
-        arrow1_id, arrow2_id = unit['arrows']
-        input1_x, input1_y, _ = self.points[new_input1_id]
-        input2_x, input2_y, _ = self.points[new_input2_id]
-        
-        # Update arrow mappings and coordinates
-        self.arrows[arrow1_id] = (new_input1_id, new_output_id)
-        self.arrows[arrow2_id] = (new_input2_id, new_output_id)
-        self.canvas.coords(arrow1_id, input1_x, input1_y, new_output_x, new_output_y)
-        self.canvas.coords(arrow2_id, input2_x, input2_y, new_output_x, new_output_y)
-        
-        # Update unit dictionary
-        unit['output'] = new_output_id
-        unit['input1'] = new_input1_id
-        unit['input2'] = new_input2_id
-        
-        # Do not move operation label for addition/multiplication; it stays with blue
-        # For logarithmic, labels stay with their respective points
-        
-        # Update numbers if an operation is enabled
-        self.update_unit_numbers(unit_id)
+            # Determine new input points (the other two points)
+            all_points = {unit['blue'], unit['yellow'], unit['red']}
+            all_points.remove(new_output_id)
+            new_input1_id, new_input2_id = list(all_points)  # Unpack the remaining two points
+            
+            # Update arrows: input1 -> output, input2 -> output
+            arrow1_id, arrow2_id = unit['arrows']
+            input1_x, input1_y, _ = self.points[new_input1_id]
+            input2_x, input2_y, _ = self.points[new_input2_id]
+            
+            # Update arrow mappings and coordinates
+            self.arrows[arrow1_id] = (new_input1_id, new_output_id)
+            self.arrows[arrow2_id] = (new_input2_id, new_output_id)
+            self.canvas.coords(arrow1_id, input1_x, input1_y, new_output_x, new_output_y)
+            self.canvas.coords(arrow2_id, input2_x, input2_y, new_output_x, new_output_y)
+            
+            # Update unit dictionary
+            unit['output'] = new_output_id
+            unit['input1'] = new_input1_id
+            unit['input2'] = new_input2_id
+            
+            # Do not move operation label for addition/multiplication; it stays with blue
+            # For logarithmic, labels stay with their respective points
+            
+            # Update numbers if an operation is enabled
+            self.update_unit_numbers(unit_id)
+            return "break"
+        else:
+            # Create new text
+            self.start_new_text(event.x, event.y)
+            return "break"
 
 if __name__ == "__main__":
     root = tk.Tk()
