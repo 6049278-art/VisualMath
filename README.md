@@ -1,11 +1,11 @@
 ![Demo screenshot](Capture5.PNG)
 
-##VisioMath
+## VisioMath
 VisioMath is an interactive Python-based whiteboard application built with Tkinter, designed for exploring mathematical concepts through visual, node-based computations. Users create colorful point units (yellow for inputs like variables, red for bases/scalars, blue for outputs/operations) to perform real-time addition, multiplication, logarithmic functions, and their inverses. Drag nodes to rearrange, link outputs for propagation, edit values via double-click or scroll—perfect for educators, students, or anyone visualizing math ideas.
 Free Version: Core operations (add/multiply/log) + text notes.
 Premium ($9.99/mo): Unlock Time Timers & Riemann Sums—get your key via upgrade link!
 
-##Features
+## Features
 
 Interactive Node Creation: Ctrl+Double-Click to spawn tri-color units (yellow/red inputs → blue output) with instant arrows and value labels.
 Dynamic Operations (Free): Right-click blue nodes to enable addition (+), multiplication (*), logarithmic (Log/Root/Base) and their inverses.
@@ -18,31 +18,31 @@ Text Notes: Double-click canvas for editable multiline notes; drag via black han
 
 Extensible: Open-source for collaboration—add ops, export, or web ports via PRs!
 
-##Installation
+## Installation
 
 
-##Usage
+## Usage
 Launch the app:
 
 
-###Create a Basic Unit:
+### Create a Basic Unit:
 
-###Ctrl+Double-Click on the canvas → Yellow/red points appear with blue output (all start at 1.0).
+Ctrl+Double-Click on the canvas → Yellow/red points appear with blue output (all start at 1.0).
 Drag blue to reposition; arrows follow.
 
-###Enable an Operation (Free):
+### Enable an Operation (Free):
 
 Right-click blue → "Addition" → "+" symbol appears; edit yellow to 5 (double-click label → type "5" → Enter) → blue updates to 6.0 (5 + 1 red).
 
-###Linking Outputs:
+### Linking Outputs:
 
 Ctrl+Alt+Click two blue outputs → Dashed white arrow links them; changes propagate (with cycle prevention).
 
-###Text Notes:
+### Text Notes:
 
 Double-click empty canvas → Type notes (Shift+Enter for lines) → Enter to save; drag black dot to move.
 
-###For advanced usage (e.g., timers on red/yellow: Right-click → "t" for auto +1/sec), upgrade to premium. See the in-app tooltips or demo video: https://www.youtube.com/watch?v=z8bdmnErXxM. Explore the code in whiteboard1.py—contributions welcome!
+### For advanced usage (e.g., timers on red/yellow: Right-click → "t" for auto +1/sec), upgrade to premium. See the in-app tooltips or demo video: https://www.youtube.com/watch?v=z8bdmnErXxM. Explore the code in whiteboard1.py—contributions welcome!
 Premium Features
 
 Time Timers: Auto-increment values every second on red/yellow points.
@@ -50,11 +50,11 @@ Riemann Sums: Accumulate integrals with history reports.
 Custom Deltas: Fine-tune scroll steps.
 Unlock by emailing for a key and setting os.environ['PREMIUM_KEY'] = 'your_key' before running.
 
-###Contributing
+### Contributing
 Contributions are welcome! Please read the CONTRIBUTING.md for guidelines.
 ###License
 This project is licensed under the Apache License 2.0.
-###Authors
+### Authors
 BlueYellowline
 
 Star ⭐ the repo if you find it useful.
