@@ -52,7 +52,7 @@ Unlock by emailing for a key and setting os.environ['PREMIUM_KEY'] = 'your_key' 
 
 ### Contributing
 Contributions are welcome! Please read the CONTRIBUTING.md for guidelines.
-###License
+### License
 This project is licensed under the Apache License 2.0.
 ### Authors
 BlueYellowline
