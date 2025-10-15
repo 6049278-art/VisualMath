@@ -1,7 +1,7 @@
 ![Demo screenshot](Capture5.PNG)
 
 # VisioMath
-Visualmath is an interactive Python-based whiteboard application built with Tkinter, designed for exploring mathematical concepts through visual, node-based computations. Users create colorful point units (yellow for inputs like variables, red for bases/scalars, blue for outputs/operations) to perform real-time addition, multiplication, logarithmic functions, and their inverses. Drag nodes to rearrange, link outputs for propagation, edit values via double-click or scroll, and use timers/deltas for dynamic updates—perfect for educators, students, or anyone visualizing math ideas
+VisioMath is an interactive Python-based whiteboard application built with Tkinter, designed for exploring mathematical concepts through visual, node-based computations. Users create colorful point units (yellow for inputs like variables, red for bases/scalars, blue for outputs/operations) to perform real-time addition, multiplication, logarithmic functions, and their inverses. Drag nodes to rearrange, link outputs for propagation, edit values via double-click or scroll, and use timers/deltas for dynamic updates—perfect for educators, students, or anyone visualizing math ideas
 ## Features
 
 Interactive Node Creation: Ctrl+Double-Click to spawn tri-color units (yellow/red inputs → blue output) with instant arrows and value labels.
@@ -13,7 +13,7 @@ Visual Enhancements: Dark canvas (gray30 bg), white text/arrows for contrast, th
 Extensible: Open-source for collaboration—add ops, export, or web ports via PRs!
 
 ## Installation
-Since Visualmath is a standalone script (no PyPI package), clone the repo and run with Python 3.8+ (Tkinter included by default).
+Since VisioMath is a standalone script (no PyPI package), clone the repo and run with Python 3.8+ (Tkinter included by default).
 bashgit clone https://github.com/6049278-art/visualmath.git
 cd visualmath
 python whiteboard1.py  
