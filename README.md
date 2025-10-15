@@ -19,7 +19,32 @@ Text Notes: Double-click canvas for editable multiline notes; drag via black han
 Extensible: Open-source for collaboration—add ops, export, or web ports via PRs!
 
 ## Installation
+**Free Version:**  
+Clone the repository and run with Python 3.8+ (Tkinter included by default):
 
+```bash
+git clone https://github.com/6049278-art/VisualMath.git
+cd VisualMath
+python whiteboard1.py
+```
+
+No extra libraries required—just standard Python!
+
+**Premium Version:**  
+After you receive a premium key (via upgrade/donation), set your key before running:
+
+```bash
+# In your terminal, set the environment variable:
+export PREMIUM_KEY='your_key'
+python whiteboard1.py
+```
+- On Windows, use:
+  ```
+  set PREMIUM_KEY=your_key
+  python whiteboard1.py
+  ```
+
+Unlock advanced features (Timers & Riemann Sums) after setting your key.
 
 ## Usage
 Launch the app:
