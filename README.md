@@ -1,87 +1,147 @@
+```markdown
+# VisioMath
+
 ![Demo screenshot](Capture5.PNG)
 
-## VisioMath
-VisioMath is an interactive Python-based whiteboard application built with Tkinter, designed for exploring mathematical concepts through visual, node-based computations. Users create colorful point units (yellow for inputs like variables, red for bases/scalars, blue for outputs/operations) to perform real-time addition, multiplication, logarithmic functions, and their inverses. Drag nodes to rearrange, link outputs for propagation, edit values via double-click or scroll—perfect for educators, students, or anyone visualizing math ideas.
-Free Version: Core operations (add/multiply/log) + text notes.
-Premium ($9.99/mo): Unlock Time Timers & Riemann Sums—get your key via upgrade link!
+VisioMath is an interactive Python-based whiteboard application built with Tkinter for exploring mathematical concepts through visual, node-based computations.
 
-## Features
+This README explains how to open, run and use the project locally, plus troubleshooting and development tips.
 
-Interactive Node Creation: Ctrl+Double-Click to spawn tri-color units (yellow/red inputs → blue output) with instant arrows and value labels.
-Dynamic Operations (Free): Right-click blue nodes to enable addition (+), multiplication (*), logarithmic (Log/Root/Base) and their inverses.
-Riemann Sum Demo (Premium): Right-click blue → "Riemann Sum" → Scroll over yellow to accumulate values (e.g., +1 each time) → Left report shows history and total (sum * red width).
-Value Editing & Linking: Double-click labels to edit, scroll for increments (0.1 steps in free; custom in premium via deltas).
-Timers & Deltas (Premium): Right-click red/yellow nodes for "t" (1/sec auto-increment) or "delta" (custom step input) modes.
-Manipulation Tools: Drag singles/groups (Shift+Click select), double-click arrows to reverse links (solve for "x"), Undo last unit, full Reset.
-Visual Enhancements: Dark canvas (gray50 bg), white text/arrows for contrast, thousands separators in numbers, π/e legend, and (premium) Riemann history reports.
-Text Notes: Double-click canvas for editable multiline notes; drag via black handle dot.
+## Quick summary
 
-Extensible: Open-source for collaboration—add ops, export, or web ports via PRs!
+- Language: Python 3.8+
+- GUI: Tkinter (no other third-party libraries required)
+- Main script: `whiteboard1.py`
+- Free features: core operations (add, multiply, log), text notes
+- Premium features: timers, custom deltas, Riemann sums (requires a PREMIUM_KEY)
 
-## Installation
-**Free Version:**  
-Clone the repository and run with Python 3.8+ (Tkinter included by default):
+## Requirements
 
-```bash
-git clone https://github.com/6049278-art/VisualMath.git
-cd VisualMath
-python whiteboard1.py
-```
+- Python 3.8 or newer
+- Tkinter (usually included with Python, but see Troubleshooting below)
 
-No extra libraries required—just standard Python!
+## Clone and run (recommended)
 
-**Premium Version:**  
-After you receive a premium key (via upgrade/donation), set your key before running:
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/6049278-art/VisualMath.git
+   cd VisualMath
+   ```
 
-```bash
-# In your terminal, set the environment variable:
-export PREMIUM_KEY='your_key'
-python whiteboard1.py
-```
-- On Windows, use:
+2. (Optional but recommended) Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   # macOS / Linux
+   source venv/bin/activate
+   # Windows (PowerShell)
+   .\venv\Scripts\Activate.ps1
+   # or Windows (cmd)
+   .\venv\Scripts\activate.bat
+   ```
+
+3. Run the app:
+   ```bash
+   python whiteboard1.py
+   ```
+
+No extra pip installs should be necessary if Tkinter is present.
+
+## Windows / macOS / Linux notes
+
+- Windows: Python installer usually includes Tkinter. Run the commands from a Command Prompt or PowerShell.
+- macOS: Use the system Python from python.org or Homebrew-installed Python. If the bundled Tk isn't working, install the latest Python from python.org (it includes a proper Tcl/Tk).
+- Linux (Ubuntu/Debian): You may need to install `python3-tk`:
+  ```bash
+  sudo apt update
+  sudo apt install python3-tk
   ```
-  set PREMIUM_KEY=your_key
+
+## Premium features (optional)
+
+If you have a premium key, set it in your environment before running:
+
+- macOS / Linux:
+  ```bash
+  export PREMIUM_KEY='your_key_here'
+  python whiteboard1.py
+  ```
+- Windows (cmd):
+  ```
+  set PREMIUM_KEY=your_key_here
+  python whiteboard1.py
+  ```
+- Windows (PowerShell):
+  ```
+  $env:PREMIUM_KEY = 'your_key_here'
   python whiteboard1.py
   ```
 
-Unlock advanced features (Timers & Riemann Sums) after setting your key.
+The app will detect the environment variable and unlock timers, Riemann sums, and custom deltas.
 
-## Usage
-Launch the app:
+## How to use (controls cheat-sheet)
 
+- Spawn a unit:
+  - Ctrl + Double-Click on the canvas → creates a unit with yellow/red inputs and blue output.
+- Move:
+  - Drag blue points to reposition. Use Shift+Click to select multiple and drag groups.
+- Edit values:
+  - Double-click a value label to edit; press Enter to confirm.
+  - Scroll over a label to increment/decrement (default step 0.1 in free version; custom step in premium).
+- Link outputs:
+  - Ctrl + Alt + Click two blue outputs to link them with a dashed white arrow. Changes propagate; the app prevents cycles.
+- Operations:
+  - Right-click a blue node to enable operations:
+    - Addition (+), Multiplication (*), Log/Root/Base and inverses.
+- Riemann sums (premium):
+  - Right-click a blue node → "Riemann Sum" and scroll over yellow to accumulate values. Reports appear on the left with history and totals.
+- Timers & deltas (premium):
+  - Right-click red/yellow nodes for "t" (auto +1/sec) or "delta" (custom step).
+- Arrow/links:
+  - Double-click arrows to reverse links (solve for x).
+- Undo & Reset:
+  - Undo last unit; full Reset clears the canvas.
+- Text notes:
+  - Double-click blank canvas to add an editable multiline note; drag using the black handle dot.
 
-### Create a Basic Unit:
+Look for in-app tooltips for contextual help and the demo video (if included in the repo) for additional guidance.
 
-Ctrl+Double-Click on the canvas → Yellow/red points appear with blue output (all start at 1.0).
-Drag blue to reposition; arrows follow.
+## Troubleshooting
 
-### Enable an Operation (Free):
+- "No module named tkinter" or Tkinter errors:
+  - On Linux, install `python3-tk` (see above).
+  - On macOS, prefer the official python.org installer that includes compatible Tcl/Tk.
+- App doesn't start / displays exceptions:
+  - Run `python whiteboard1.py` from a terminal to see exception output and stack traces.
+  - If using a virtual environment, ensure it's activated and `python` points to that environment.
+- Blank window or widgets not showing:
+  - Check Python/Tkinter versions; mismatched Tcl/Tk can cause display issues on macOS.
 
-Right-click blue → "Addition" → "+" symbol appears; edit yellow to 5 (double-click label → type "5" → Enter) → blue updates to 6.0 (5 + 1 red).
+## Development / Opening the code in an editor
 
-### Linking Outputs:
+- Open the project folder in your editor or IDE (VS Code, PyCharm):
+  - VS Code: `code .`
+  - Look for `whiteboard1.py` as the entry point. Browse other .py files to understand components (nodes, links, UI helpers).
+- To debug, add print/logging statements or run the script in the debugger.
 
-Ctrl+Alt+Click two blue outputs → Dashed white arrow links them; changes propagate (with cycle prevention).
+## Contributing
 
-### Text Notes:
+Contributions are welcome. Please follow these steps:
+1. Fork the repo.
+2. Create a feature branch: `git checkout -b my-feature`.
+3. Make changes and run the app locally to verify behavior.
+4. Open a PR describing your changes.
 
-Double-click empty canvas → Type notes (Shift+Enter for lines) → Enter to save; drag black dot to move.
+See CONTRIBUTING.md (if present) for more detail.
 
-### For advanced usage 
-(e.g., timers on red/yellow: Right-click → "t" for auto +1/sec), Upgrade to premium. See the in-app tooltips or demo video: https://www.youtube.com/watch?v=z8bdmnErXxM. Explore the code in whiteboard1.py—contributions welcome!
-Premium Features
+## License
 
-Time Timers: Auto-increment values every second on red/yellow points.
-Riemann Sums: Accumulate integrals with history reports.
-Custom Deltas: Fine-tune scroll steps.
-Unlock by emailing for a key and setting os.environ['PREMIUM_KEY'] = 'your_key' before running.
+Apache License 2.0
 
-### Contributing
-Contributions are welcome! Please read the CONTRIBUTING.md for guidelines.
-### License
-This project is licensed under the Apache License 2.0.
-### Authors
+## Authors
+
 BlueYellowline
 
-Star ⭐ the repo if you find it useful.
-Open an issue or pull request for suggestions, improvements, or fixes!
+If something is unclear or you want, I can:
+- open a pull request adding this README to the repo, or
+- paste a shorter Quick Start section into the existing README instead.
+```
