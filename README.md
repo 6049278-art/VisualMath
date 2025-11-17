@@ -67,7 +67,8 @@ Ctrl+Alt+Click two blue outputs → Dashed white arrow links them; changes propa
 
 Double-click empty canvas → Type notes (Shift+Enter for lines) → Enter to save; drag black dot to move.
 
-### For advanced usage (e.g., timers on red/yellow: Right-click → "t" for auto +1/sec), upgrade to premium. See the in-app tooltips or demo video: https://www.youtube.com/watch?v=z8bdmnErXxM. Explore the code in whiteboard1.py—contributions welcome!
+### For advanced usage 
+(e.g., timers on red/yellow: Right-click → "t" for auto +1/sec), Upgrade to premium. See the in-app tooltips or demo video: https://www.youtube.com/watch?v=z8bdmnErXxM. Explore the code in whiteboard1.py—contributions welcome!
 Premium Features
 
 Time Timers: Auto-increment values every second on red/yellow points.
